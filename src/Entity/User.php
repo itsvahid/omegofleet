@@ -10,6 +10,8 @@ use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\Regex;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
@@ -30,6 +32,9 @@ class User implements UserInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 100)]
+    #[Length(min: 3, max: 100)]
+    #[Regex(pattern: "/.*[A-Z]+.*/", message: 'Name must contain at least one uppercase letter.')]
+    #[Regex(pattern: "/^[A-Za-z\s]+$/", message: 'Name must contain only letters and spaces.')]
     private ?string $name = null;
 
     #[ORM\Column(enumType: Role::class)]

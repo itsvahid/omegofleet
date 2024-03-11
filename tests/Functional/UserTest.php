@@ -23,8 +23,8 @@ class UserTest extends ApiTestCase
 
     public function testSuperAdminCanGetAllUsers(): void
     {
-        $this->createUser('User1', Role::ROLE_USER, null);
-        $this->createUser('User2', Role::ROLE_COMPANY_ADMIN, null);
+        $this->createUser('User one', Role::ROLE_USER, null);
+        $this->createUser('User two', Role::ROLE_COMPANY_ADMIN, null);
 
         static::createClient()->request('GET', '/api/users', [
             'headers' => [
@@ -47,8 +47,8 @@ class UserTest extends ApiTestCase
     public function testCompanyAdminAndUserCanGetOnlySameCompanyUsers(): void
     {
         $company = $this->createCompany('Company 1');
-        $companyAdmin = $this->createUser('User1', Role::ROLE_COMPANY_ADMIN, $company);
-        $companyUser = $this->createUser('User2', Role::ROLE_USER, $company);
+        $companyAdmin = $this->createUser('User one', Role::ROLE_COMPANY_ADMIN, $company);
+        $companyUser = $this->createUser('User two', Role::ROLE_USER, $company);
 
         $anotherCompany = $this->createCompany('Company 2');
         $this->createUser('User3', Role::ROLE_COMPANY_ADMIN, $anotherCompany);
@@ -96,7 +96,7 @@ class UserTest extends ApiTestCase
     {
         $creator = $this->createUser('creator user', $creatorRole, null);
 
-        $this->requestCreateUser('User1', $newUserRole, $creator);
+        $this->requestCreateUser('User', $newUserRole, $creator);
         $this->assertResponseStatusCodeSame($statusCode);
     }
 
@@ -110,6 +110,61 @@ class UserTest extends ApiTestCase
 
         $this->requestDeleteUser(userToDelete: $userToDelete, userDeleter: $userDeleter);
         $this->assertResponseStatusCodeSame($statusCode);
+    }
+
+    public function testUserNameShouldBeMinThreeCharacters(): void
+    {
+        $this->requestCreateUser(name: 'Me', role: Role::ROLE_USER, creator: $this->superAdmin);
+
+        $this->assertResponseIsUnprocessable();
+    }
+
+    public function testUserNameShouldBeMaxHundredCharacters(): void
+    {
+        $aVeryLongName = str_repeat('x', 101);
+        $this->requestCreateUser(name: $aVeryLongName, role: Role::ROLE_USER, creator: $this->superAdmin);
+
+        $this->assertResponseIsUnprocessable();
+    }
+
+
+    public function testNameRequiresAtLeastOneUppercase(): void
+    {
+        $this->requestCreateUser(name: 'name', role: Role::ROLE_USER, creator: $this->superAdmin);
+
+        $this->assertResponseIsUnprocessable();
+        $this->assertJsonContains([
+            "@type" => "ConstraintViolationList",
+            "violations" => [
+                [
+                    "propertyPath" => "name",
+                    "message" => "Name must contain at least one uppercase letter.",
+                ]
+            ],
+            "hydra:description" => "name: Name must contain at least one uppercase letter.",
+        ]);
+    }
+
+    /**
+     * @dataProvider providerNameMustConsistOfOnlyLettersAndSpacesData
+     */
+    public function testNameMustConsistOfOnlyLettersAndSpaces(int $statusCode, string $name): void
+    {
+        $this->requestCreateUser(name: $name, role: Role::ROLE_USER, creator: $this->superAdmin);
+
+        $this->assertResponseStatusCodeSame($statusCode);
+        if ($statusCode === 422) {
+            $this->assertJsonContains([
+                "@type" => "ConstraintViolationList",
+                "violations" => [
+                    [
+                        "propertyPath" => "name",
+                        "message" => "Name must contain only letters and spaces.",
+                    ]
+                ],
+                "hydra:description" => "name: Name must contain only letters and spaces.",
+            ]);
+        }
     }
 
     private function createSuperAdmin(): User
@@ -195,6 +250,19 @@ class UserTest extends ApiTestCase
             [Role::ROLE_SUPER_ADMIN, 204],
             [Role::ROLE_COMPANY_ADMIN, 403],
             [Role::ROLE_USER, 403]
+        ];
+    }
+
+    private function providerNameMustConsistOfOnlyLettersAndSpacesData(): array
+    {
+        return [
+            [422, 'Name with number 1'],
+            [422, 'Name with +'],
+            [422, 'Name with -/@$!'],
+            [422, 'Name with number 1'],
+            [201, 'Valid name'],
+            [201, 'ValidName'],
+            [201, 'Name'],
         ];
     }
 }
