@@ -7,6 +7,7 @@ use App\Repository\CompanyRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints\Length;
 
 #[ORM\Entity(repositoryClass: CompanyRepository::class)]
 #[ApiResource]
@@ -18,6 +19,7 @@ class Company
     private ?int $id = null;
 
     #[ORM\Column(length: 100, unique: true)]
+    #[Length(min: 5, max: 100)]
     private ?string $name = null;
 
     #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'company', orphanRemoval: true)]

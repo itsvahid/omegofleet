@@ -8,7 +8,7 @@ class CompanyTest extends ApiTestCase
 {
     public function testGetCompanies(): void
     {
-        $response = static::createClient()->request('GET', '/api/companies.jsonld');
+        static::createClient()->request('GET', '/api/companies.jsonld');
 
         $this->assertResponseIsSuccessful();
         $this->assertJsonContains([
@@ -21,11 +21,12 @@ class CompanyTest extends ApiTestCase
     }
 
 
+    // TODO only ROLE_SUPER_ADMIN can create a company
     public function testCanCreateCompany(): void
     {
-        $response = static::createClient()->request('POST', '/api/companies', [
+        static::createClient()->request('POST', '/api/companies', [
             'json' => [
-                'name' => 'McDonalds',
+                'name' => 'Apple',
                 'users' => [],
             ],
             'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
@@ -34,27 +35,64 @@ class CompanyTest extends ApiTestCase
         $this->assertResponseStatusCodeSame(201);
         $this->assertJsonContains([
             "@context" => "/api/contexts/Company",
-            "@id" => "/api/companies/4",
             "@type" => "Company",
-//            "id" => 1,
             "name" => "Apple",
             "users" => [],
         ]);
 
     }
 
+    public function testCompanyNameShouldBeMinFiveCharacters(): void
+    {
+        static::createClient()->request('POST', '/api/companies', [
+            'json' => [
+                'name' => 'BMW',
+                'users' => [],
+            ],
+            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
+        ]);
 
-//    public function testGetCompanyById(): void
-//    {
-//        $response = static::createClient()->request('GET', '/api/companies/1.jsonld');
-//
-//        $this->assertResponseIsSuccessful();
-//        $this->assertJsonContains([
-//            '@context' => '/api/contexts/Company',
-//            '@id' => '/api/companies',
-//            '@type' => 'hydra:Collection',
-//            'hydra:totalItems' => 0,
-//            'hydra:member' => []
-//        ]);
-//    }
+        $this->assertResponseIsUnprocessable();
+
+    }
+
+    public function testCompanyNameShouldBeMaxHundredCharacters(): void
+    {
+        $aVeryLongName = str_repeat('x', 101);
+        static::createClient()->request('POST', '/api/companies', [
+            'json' => [
+                'name' => $aVeryLongName,
+                'users' => [],
+            ],
+            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
+        ]);
+
+        $this->assertResponseIsUnprocessable();
+    }
+
+    public function testGetCompanyById(): void
+    {
+        // Create a sample company
+        $response = static::createClient()->request('POST', '/api/companies', [
+            'json' => [
+                'name' => 'Apple',
+                'users' => [],
+            ],
+            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
+        ]);
+        $company = json_decode($response->getContent(), true);
+
+        static::createClient()->request('GET', $company['@id'] . '.jsonld');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertJsonContains([
+            "@context" => "/api/contexts/Company",
+            "@type" => "Company",
+            "@id" => $company['@id'],
+            "id" => $company['id'],
+            "name" => "Apple",
+            "users" => [],
+        ]);
+    }
+
 }
