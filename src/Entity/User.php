@@ -27,6 +27,10 @@ class User implements UserInterface
     #[ORM\Column(length: 180)]
     private ?string $accessToken = null;
 
+    #[ORM\ManyToOne(inversedBy: 'users')]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Company $company = null;
+
     public function __construct()
     {
         $this->accessToken = bin2hex(random_bytes(10));
@@ -74,6 +78,18 @@ class User implements UserInterface
     public function getAccessToken(): ?string
     {
         return $this->accessToken;
+    }
+
+    public function getCompany(): ?Company
+    {
+        return $this->company;
+    }
+
+    public function setCompany(?Company $company): static
+    {
+        $this->company = $company;
+
+        return $this;
     }
 
     /**
