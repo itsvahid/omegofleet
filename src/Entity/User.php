@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -9,6 +10,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_ACCESS_TOKEN', fields: ['accessToken'])]
+#[ApiResource]
 class User implements UserInterface
 {
     #[ORM\Id]
@@ -24,6 +26,11 @@ class User implements UserInterface
 
     #[ORM\Column(length: 180)]
     private ?string $accessToken = null;
+
+    public function __construct()
+    {
+        $this->accessToken = bin2hex(random_bytes(10));
+    }
 
     public function getId(): ?int
     {
@@ -62,33 +69,11 @@ class User implements UserInterface
     public function getRoles(): array
     {
         return array($this->getRole()->value);
-//        $roles = $this->roles;
-//        // guarantee every user at least has ROLE_USER
-//        $roles[] = 'ROLE_USER';
-//
-//        return array_unique($roles);
     }
-
-//    /**
-//     * @param list<string> $roles
-//     */
-//    public function setRoles(array $roles): static
-//    {
-//        $this->roles = $roles;
-//
-//        return $this;
-//    }
 
     public function getAccessToken(): ?string
     {
         return $this->accessToken;
-    }
-
-    public function setAccessToken(string $accessToken): static
-    {
-        $this->accessToken = $accessToken;
-
-        return $this;
     }
 
     /**
