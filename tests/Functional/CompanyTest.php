@@ -72,6 +72,24 @@ class CompanyTest extends ApiTestCase
         $this->assertResponseIsUnprocessable();
     }
 
+    public function testCompanyNameMustBeUnique(): void
+    {
+        $this->requestCreateCompany('Microsoft', [], $this->superAdmin->getAccessToken());
+        $this->requestCreateCompany('Microsoft', [], $this->superAdmin->getAccessToken());
+
+        $this->assertResponseIsUnprocessable();
+        $this->assertJsonContains([
+            "@type" => "ConstraintViolationList",
+            "violations" => [
+                [
+                    "propertyPath" => "name",
+                    "message" => "Company name must be unique",
+                ]
+            ],
+            "hydra:description" => "name: Company name must be unique",
+        ]);
+    }
+
     public function testGetCompanyById(): void
     {
         // Create a sample company
