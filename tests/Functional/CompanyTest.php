@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests;
+namespace Functional;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 
@@ -19,7 +19,6 @@ class CompanyTest extends ApiTestCase
             'hydra:member' => []
         ]);
     }
-
 
     // TODO only ROLE_SUPER_ADMIN can create a company
     public function testCanCreateCompany(): void
@@ -94,5 +93,7 @@ class CompanyTest extends ApiTestCase
             "users" => [],
         ]);
     }
+
+    // TODO testCompanyNameMustBeUnique
 
 }
