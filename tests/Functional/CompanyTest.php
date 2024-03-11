@@ -3,9 +3,25 @@
 namespace Functional;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
+use ApiPlatform\Validator\Exception\ValidationException;
+use App\Entity\Company;
+use App\Entity\Role;
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpClient\Exception\ClientException;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class CompanyTest extends ApiTestCase
 {
+
+    private ?User $superAdmin = null;
+
+    protected function setUp(): void
+    {
+        $this->superAdmin = $this->createSuperAdmin();
+    }
+
     public function testGetCompanies(): void
     {
         static::createClient()->request('GET', '/api/companies.jsonld');
@@ -20,16 +36,16 @@ class CompanyTest extends ApiTestCase
         ]);
     }
 
-    // TODO only ROLE_SUPER_ADMIN can create a company
+    public function testOnlyRoleSuperAdminCanCreateCompany(): void
+    {
+        $this->requestCreateCompany(name: 'Apple', userAccessToken: '');
+
+        $this->assertResponseStatusCodeSame(401);
+    }
+
     public function testCanCreateCompany(): void
     {
-        static::createClient()->request('POST', '/api/companies', [
-            'json' => [
-                'name' => 'Apple',
-                'users' => [],
-            ],
-            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
-        ]);
+        $this->requestCreateCompany(name: 'Apple', userAccessToken: $this->superAdmin->getAccessToken());
 
         $this->assertResponseStatusCodeSame(201);
         $this->assertJsonContains([
@@ -43,28 +59,15 @@ class CompanyTest extends ApiTestCase
 
     public function testCompanyNameShouldBeMinFiveCharacters(): void
     {
-        static::createClient()->request('POST', '/api/companies', [
-            'json' => [
-                'name' => 'BMW',
-                'users' => [],
-            ],
-            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
-        ]);
+        $this->requestCreateCompany(name: 'BMW', userAccessToken: $this->superAdmin->getAccessToken());
 
         $this->assertResponseIsUnprocessable();
-
     }
 
     public function testCompanyNameShouldBeMaxHundredCharacters(): void
     {
         $aVeryLongName = str_repeat('x', 101);
-        static::createClient()->request('POST', '/api/companies', [
-            'json' => [
-                'name' => $aVeryLongName,
-                'users' => [],
-            ],
-            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
-        ]);
+        $this->requestCreateCompany(name: $aVeryLongName, userAccessToken: $this->superAdmin->getAccessToken());
 
         $this->assertResponseIsUnprocessable();
     }
@@ -72,14 +75,8 @@ class CompanyTest extends ApiTestCase
     public function testGetCompanyById(): void
     {
         // Create a sample company
-        $response = static::createClient()->request('POST', '/api/companies', [
-            'json' => [
-                'name' => 'Apple',
-                'users' => [],
-            ],
-            'headers' => ['accept' => ['application/ld+json'], 'content-type' => ['application/ld+json']],
-        ]);
-        $company = json_decode($response->getContent(), true);
+        $response = $this->requestCreateCompany(name: 'Apple', userAccessToken: $this->superAdmin->getAccessToken())->getContent();
+        $company = json_decode($response, true);
 
         static::createClient()->request('GET', $company['@id'] . '.jsonld');
 
@@ -91,6 +88,36 @@ class CompanyTest extends ApiTestCase
             "id" => $company['id'],
             "name" => "Apple",
             "users" => [],
+        ]);
+    }
+
+    private function createSuperAdmin(): User
+    {
+        /** @var EntityManagerInterface $entityManager */
+        $entityManager = self::getContainer()->get('doctrine')->getManager();
+
+        $superAdmin = new User();
+        $superAdmin->setRole(Role::ROLE_SUPER_ADMIN);
+        $superAdmin->setName('Super Admin');
+
+        $entityManager->persist($superAdmin);
+        $entityManager->flush();
+
+        return $superAdmin;
+    }
+
+    private function requestCreateCompany(string $name, array $users = [], $userAccessToken = ''): ResponseInterface
+    {
+        return static::createClient()->request('POST', '/api/companies', [
+            'json' => [
+                'name' => $name,
+                'users' => $users,
+            ],
+            'headers' => [
+                'accept' => ['application/ld+json'],
+                'content-type' => ['application/ld+json'],
+                'Authorization' => ['Bearer ' . $userAccessToken],
+            ],
         ]);
     }
 
