@@ -26,7 +26,7 @@ class UserTest extends ApiTestCase
         $this->createUser('User1', Role::ROLE_USER, null);
         $this->createUser('User2', Role::ROLE_COMPANY_ADMIN, null);
 
-        static::createClient()->request('GET', '/api/users.jsonld', [
+        static::createClient()->request('GET', '/api/users', [
             'headers' => [
                 'accept' => ['application/ld+json'],
                 'content-type' => ['application/ld+json'],
@@ -55,7 +55,7 @@ class UserTest extends ApiTestCase
         $this->createUser('User4', Role::ROLE_USER, $anotherCompany);
 
         // Company admin can get only users in their company
-        static::createClient()->request('GET', '/api/users.jsonld', [
+        static::createClient()->request('GET', '/api/users', [
             'headers' => [
                 'accept' => ['application/ld+json'],
                 'content-type' => ['application/ld+json'],
@@ -72,7 +72,7 @@ class UserTest extends ApiTestCase
         ]);
 
         // User can get only users in their company
-        static::createClient()->request('GET', '/api/users.jsonld', [
+        static::createClient()->request('GET', '/api/users', [
             'headers' => [
                 'accept' => ['application/ld+json'],
                 'content-type' => ['application/ld+json'],
@@ -92,11 +92,11 @@ class UserTest extends ApiTestCase
     /**
      * @dataProvider providerOnlySuperAdminAndCompanyAdminCanCreateUserData
      */
-    public function testOnlySuperAdminAndCompanyAdminCanCreateUser(Role $role, int $statusCode)
+    public function testOnlySuperAdminAndCompanyAdminCanCreateUserWithRoles(Role $creatorRole, Role $newUserRole, int $statusCode)
     {
-        $creator = $this->createUser('creator user', $role, null);
+        $creator = $this->createUser('creator user', $creatorRole, null);
 
-        $this->requestCreateUser('User1', Role::ROLE_USER, $creator);
+        $this->requestCreateUser('User1', $newUserRole, $creator);
         $this->assertResponseStatusCodeSame($statusCode);
     }
 
@@ -177,9 +177,15 @@ class UserTest extends ApiTestCase
     private function providerOnlySuperAdminAndCompanyAdminCanCreateUserData(): array
     {
         return [
-            [Role::ROLE_SUPER_ADMIN, 201],
-            [Role::ROLE_COMPANY_ADMIN, 201],
-            [Role::ROLE_USER, 403]
+            [Role::ROLE_SUPER_ADMIN, Role::ROLE_SUPER_ADMIN, 201],
+            [Role::ROLE_SUPER_ADMIN, Role::ROLE_COMPANY_ADMIN, 201],
+            [Role::ROLE_SUPER_ADMIN, Role::ROLE_USER, 201],
+            [Role::ROLE_COMPANY_ADMIN, Role::ROLE_USER, 201],
+            [Role::ROLE_COMPANY_ADMIN, Role::ROLE_SUPER_ADMIN, 403],
+            [Role::ROLE_COMPANY_ADMIN, Role::ROLE_COMPANY_ADMIN, 403],
+            [Role::ROLE_USER, Role::ROLE_SUPER_ADMIN, 403],
+            [Role::ROLE_USER, Role::ROLE_COMPANY_ADMIN, 403],
+            [Role::ROLE_USER, Role::ROLE_USER, 403],
         ];
     }
 

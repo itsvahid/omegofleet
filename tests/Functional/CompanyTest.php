@@ -24,7 +24,7 @@ class CompanyTest extends ApiTestCase
 
     public function testGetCompanies(): void
     {
-        static::createClient()->request('GET', '/api/companies.jsonld');
+        static::createClient()->request('GET', '/api/companies');
 
         $this->assertResponseIsSuccessful();
         $this->assertJsonContains([
@@ -78,7 +78,7 @@ class CompanyTest extends ApiTestCase
         $response = $this->requestCreateCompany(name: 'Apple', userAccessToken: $this->superAdmin->getAccessToken())->getContent();
         $company = json_decode($response, true);
 
-        static::createClient()->request('GET', $company['@id'] . '.jsonld');
+        static::createClient()->request('GET', $company['@id']);
 
         $this->assertResponseIsSuccessful();
         $this->assertJsonContains([

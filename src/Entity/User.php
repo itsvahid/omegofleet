@@ -18,7 +18,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
     operations: [
         new Get(),
         new GetCollection(),
-        new Post(security: "is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_COMPANY_ADMIN')"),
+        new Post(securityPostDenormalize: "(is_granted('ROLE_COMPANY_ADMIN') and object.getRole().value == 'ROLE_USER') or is_granted('ROLE_SUPER_ADMIN')"),
         new Delete(security: "is_granted('ROLE_SUPER_ADMIN')"),
     ]
 )]
