@@ -112,6 +112,24 @@ class UserTest extends ApiTestCase
         $this->assertResponseStatusCodeSame($statusCode);
     }
 
+    public function testSuperAdminCanNotHaveCompany(): void
+    {
+        $company = $this->createCompany('My Company');
+        $this->requestCreateUser('Super Admin with a company', Role::ROLE_SUPER_ADMIN, $this->superAdmin, $company);
+
+        $this->assertResponseIsUnprocessable();
+        $this->assertJsonContains([
+            "@type" => "ConstraintViolationList",
+            "violations" => [
+                [
+                    "propertyPath" => "company",
+                    "message" => "Super Admin role can not have company",
+                ]
+            ],
+            "hydra:description" => "company: Super Admin role can not have company",
+        ]);
+    }
+
     public function testUserNameShouldBeMinThreeCharacters(): void
     {
         $this->requestCreateUser(name: 'Me', role: Role::ROLE_USER, creator: $this->superAdmin);
@@ -203,12 +221,13 @@ class UserTest extends ApiTestCase
         return $company;
     }
 
-    private function requestCreateUser(string $name, Role $role, User $creator): ResponseInterface
+    private function requestCreateUser(string $name, Role $role, User $creator, ?Company $company = null): ResponseInterface
     {
         return static::createClient()->request('POST', '/api/users', [
             'json' => [
                 'name' => $name,
                 'role' => $role->value,
+                'company' => $company ? "/api/companies/{$company->getId()}" : null
             ],
             'headers' => [
                 'accept' => ['application/ld+json'],

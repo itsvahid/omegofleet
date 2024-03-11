@@ -10,6 +10,7 @@ use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints\Expression;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\Regex;
 
@@ -45,6 +46,10 @@ class User implements UserInterface
 
     #[ORM\ManyToOne(inversedBy: 'users')]
     #[ORM\JoinColumn(nullable: true)]
+    #[Expression(
+        expression: "value == null or this.getRole().value in ['ROLE_USER', 'ROLE_COMPANY_ADMIN']",
+        message: "Super Admin role can not have company"
+    )]
     private ?Company $company = null;
 
     public function __construct()
